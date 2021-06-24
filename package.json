@@ -1,6 +1,9 @@
 {
   "name": "twitch-stream-notifications",
   "version": "1.0.0",
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
+    "netlify-cli": "^3.38.10",
+    "@netlify/functions": "^0.7.2"
   }
 }
