@@ -10,12 +10,20 @@ const Pusher = require("pusher");
  * @typedef {import('@netlify/functions').HandlerResponse} HandlerResponse
  */
 
+const {
+  PUSHER_APP_ID,
+  PUSHER_KEY,
+  PUSHER_SECRET,
+  PUSHER_CLUSTER,
+  TWITCH_WEBHOOK_SECRET,
+  TWITCH_USER_ID,
+} = process.env;
 
- const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: process.env.PUSHER_CLUSTER,
+const pusher = new Pusher({
+  appId: PUSHER_APP_ID,
+  key: PUSHER_KEY,
+  secret: PUSHER_SECRET,
+  cluster: PUSHER_CLUSTER,
   useTLS: true
 });
 
@@ -43,7 +51,7 @@ exports.handler = async function (event, context) {
 
   const verified = twitchVerification(
       event.headers['Twitch-Eventsub-Message-Signature'],
-      process.env.TWITCH_WEBHOOK_SECRET,
+      TWITCH_WEBHOOK_SECRET,
       event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body
   );
   if (event.httpMethod === 'POST') {
@@ -64,7 +72,7 @@ exports.handler = async function (event, context) {
     switch(event.headers['Twitch-Eventsub-Subscription-Type']){
       case 'channel.follow':
         // data transform goes here.
-        pusher.trigger(process.env.TWITCH_USER_ID, "channel.follow", body);
+        pusher.trigger(TWITCH_USER_ID, "channel.follow", body);
         break;
     }
 
