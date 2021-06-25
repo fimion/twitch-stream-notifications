@@ -1,4 +1,8 @@
 const crypto = require('crypto')
+const Pusher = require("pusher");
+
+
+
 
 /**
  * @typedef {import('@netlify/functions').HandlerEvent} HandlerEvent
@@ -6,6 +10,14 @@ const crypto = require('crypto')
  * @typedef {import('@netlify/functions').HandlerResponse} HandlerResponse
  */
 
+
+ const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
+  useTLS: true
+});
 
 /**
  *
@@ -31,19 +43,28 @@ exports.handler = async function (event, context) {
 
   const verified = twitchVerification(
       event.headers['Twitch-Eventsub-Message-Signature'],
-      process.env.MY_TWITCH_SECRET,
+      process.env.TWITCH_WEBHOOK_SECRET,
       event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body
   );
   if (event.httpMethod === 'POST') {
     if(!verified) return {statusCode:403,body:"Verification failed."};
 
+    let body;
+
+    try{
+      body = JSON.parse(event.body);
+    }catch(e){
+      return {statusCode:500, body:e};
+    }
+
     if(event.headers['Twitch-Eventsub-Message-Type'] === 'webhook_callback_verification'){
-      return {statusCode:200, body: JSON.parse(event.body).challenge};
+      return {statusCode:200, body: body.challenge};
     }
 
     switch(event.headers['Twitch-Eventsub-Subscription-Type']){
       case 'channel.follow':
         // data transform goes here.
+        pusher.trigger(process.env.TWITCH_USER_ID, "channel.follow", body);
         break;
     }
 

@@ -1,7 +1,12 @@
 {
   "name": "twitch-stream-notifications",
   "version": "1.0.0",
-  "dependencies": {},
+  "description": "A simple webhook to listen for new listeners on twitch and publish them",
+  "repository": {"url": "https://github.com/fimion/twitch-stream-notifications"},
+  "license": "MIT",
+  "dependencies": {
+    "pusher": "^5.0.0"
+  },
   "devDependencies": {
     "netlify-cli": "^3.38.10",
     "@netlify/functions": "^0.7.2"
