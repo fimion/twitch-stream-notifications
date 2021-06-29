@@ -56,8 +56,6 @@ exports.handler = async function (event, context) {
 
   if (event.httpMethod === 'GET') {
 
-    return {statusCode:200, body: event.rawUrl};
-
     const {action, type} = event.queryStringParameters
 
     if (!ALLOWED_ACTIONS.includes(action)) {
@@ -95,9 +93,11 @@ exports.handler = async function (event, context) {
       body: `That didn't work. Alex, please make a better error message.`,
     }
     if (action === 'subscribe' && !typeSub) {
+      const callback = event.rawUrl.split('?')[0];
       switch (type) {
         case 'channel.follow':
           try {
+
             result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, {secret:TWITCH_WEBHOOK_SECRET,method:'webhook',callback})
           } catch(e){
             return {
