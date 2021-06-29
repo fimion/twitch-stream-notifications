@@ -53,11 +53,7 @@ function twitchVerification(expected, secret, body) {
  */
 exports.handler = async function(event, context) {
 
-  const verified = twitchVerification(
-      event.headers['Twitch-Eventsub-Message-Signature'],
-      TWITCH_WEBHOOK_SECRET,
-      event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body,
-  )
+
 
   if(event.httpMethod === 'GET'){
 
@@ -108,7 +104,15 @@ exports.handler = async function(event, context) {
     }
   }
 
+
   if (event.httpMethod === 'POST') {
+
+    const verified = twitchVerification(
+        event.headers['Twitch-Eventsub-Message-Signature'],
+        TWITCH_WEBHOOK_SECRET,
+        event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body,
+    )
+
     if (!verified) return {statusCode: 403, body: "Verification failed."}
 
     let body
