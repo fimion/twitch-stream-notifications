@@ -40,7 +40,7 @@ const ALLOWED_EVENT_SUB_TYPES = ['channel.follow'];
  * @link https://github.com/thedist/Twitch-Webhook-AWS-Tutorial/blob/f402b1575381fa77dc71e7994a056c3b5cc34444/src/twitch-webhook-post/index.js#L6-L10
  */
 function twitchVerification(expected, secret, body) {
-  const calculated = 'sha256=' + crypto.createHmac('sha256', secret).update(Buffer(body)).digest('hex')
+  const calculated = 'sha256=' + crypto.createHmac('sha256', secret).update(Buffer.from(body)).digest('hex')
   return expected === calculated
 }
 
