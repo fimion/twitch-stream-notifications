@@ -88,14 +88,24 @@ exports.handler = async function (event, context) {
     const typeSub = currentSubs.data.find((sub) => {
       return sub.type === type
     })
-
+    let result = {
+      statusCode: 400,
+      body: `That didn't work. Alex, please make a better error message.`,
+    }
     if (action === 'subscribe' && !typeSub) {
       switch (type) {
         case 'channel.follow':
-          const result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, TWITCH_WEBHOOK_SECRET)
+          try {
+            result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, TWITCH_WEBHOOK_SECRET)
+          } catch(e){
+            return {
+              statusCode: 500,
+              body: "The attempted subscription failed",
+            }
+          }
           return {
             statusCode: 200,
-            body: JSON.stringify(result),
+            body: JSON.stringify(result.body),
           }
       }
     } else if (action === 'unsubscribe' && typeSub) {
@@ -105,10 +115,7 @@ exports.handler = async function (event, context) {
         body: JSON.stringify(result),
       }
     } else {
-      return {
-        statusCode: 400,
-        body: `That didn't work. Alex, please make a better error message.`,
-      }
+      return result;
     }
   }
 
