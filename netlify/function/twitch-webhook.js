@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const Pusher = require("pusher")
-const { ClientCredentialsAuthProvider } = require("twitch-auth")
-const { ApiClient } = require("twitch")
+const {ClientCredentialsAuthProvider} = require("twitch-auth")
+const {ApiClient} = require("twitch")
 
 /**
  * @typedef {import('@netlify/functions').HandlerEvent} HandlerEvent
@@ -28,8 +28,8 @@ const pusher = new Pusher({
   useTLS: true,
 })
 
-const ALLOWED_ACTIONS =['subscribe', 'unsubscribe'];
-const ALLOWED_EVENT_SUB_TYPES = ['channel.follow'];
+const ALLOWED_ACTIONS = ['subscribe', 'unsubscribe']
+const ALLOWED_EVENT_SUB_TYPES = ['channel.follow']
 
 /**
  *
@@ -51,51 +51,59 @@ function twitchVerification(expected, secret, body) {
  * @param {HandlerContext} context
  * @returns {Promise<HandlerResponse>}
  */
-exports.handler = async function(event, context) {
+exports.handler = async function (event, context) {
 
 
+  if (event.httpMethod === 'GET') {
 
-  if(event.httpMethod === 'GET'){
+    const {action, type} = event.queryStringParameters
 
-    const {action, type} = event.queryStringParameters;
-
-    if(!ALLOWED_ACTIONS.includes(action)){
+    if (!ALLOWED_ACTIONS.includes(action)) {
       return {
         statusCode: 400,
-        body:`action must be one of the following: ${ALLOWED_ACTIONS.join(', ')}`,
+        body: `action must be one of the following: ${ALLOWED_ACTIONS.join(', ')}`,
       }
     }
 
-    if(!ALLOWED_EVENT_SUB_TYPES.includes(type)){
+    if (!ALLOWED_EVENT_SUB_TYPES.includes(type)) {
       return {
         statusCode: 400,
         body: `type must be one of the following: ${ALLOWED_EVENT_SUB_TYPES.join(', ')}`,
       }
     }
 
-    const authProvider = new ClientCredentialsAuthProvider(TWITCH_API_CLIENT_ID, TWITCH_API_CLIENT_SECRET);
-    const apiClient = new ApiClient({authProvider});
 
-    const currentSubs = await apiClient.helix.eventSub.getSubscriptionsForStatus('enabled');
-    const typeSub = currentSubs.data.find((sub)=>{
+    const authProvider = new ClientCredentialsAuthProvider(TWITCH_API_CLIENT_ID, TWITCH_API_CLIENT_SECRET)
+    const apiClient = new ApiClient({authProvider})
+
+    let currentSubs
+    try {
+      currentSubs = await apiClient.helix.eventSub.getSubscriptionsForStatus('enabled')
+    } catch (e) {
+      return {
+        statusCode: 500,
+        body: `could not fetch subscriptions`,
+      }
+    }
+    const typeSub = currentSubs.data.find((sub) => {
       return sub.type === type
     })
 
-    if(action === 'subscribe' && !typeSub){
-      switch (type){
+    if (action === 'subscribe' && !typeSub) {
+      switch (type) {
         case 'channel.follow':
-          const result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, TWITCH_WEBHOOK_SECRET);
+          const result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, TWITCH_WEBHOOK_SECRET)
           return {
             statusCode: 200,
             body: JSON.stringify(result),
-          };
+          }
       }
-    } else if(action === 'unsubscribe' && typeSub){
-      const result = await apiClient.helix.eventSub.deleteSubscription(typeSub.id);
+    } else if (action === 'unsubscribe' && typeSub) {
+      const result = await apiClient.helix.eventSub.deleteSubscription(typeSub.id)
       return {
         statusCode: 200,
         body: JSON.stringify(result),
-      };
+      }
     } else {
       return {
         statusCode: 400,
@@ -131,7 +139,7 @@ exports.handler = async function(event, context) {
       case 'channel.follow':
         // data transform goes here.
         await pusher.trigger(TWITCH_USER_ID, "channel.follow", body)
-        break;
+        break
     }
 
   }
