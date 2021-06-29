@@ -1,8 +1,7 @@
 const crypto = require('crypto')
-const Pusher = require("pusher");
-
-
-
+const Pusher = require("pusher")
+const { ClientCredentialsAuthProvider } = require("twitch-auth")
+const { ApiClient } = require("twitch")
 
 /**
  * @typedef {import('@netlify/functions').HandlerEvent} HandlerEvent
@@ -15,17 +14,22 @@ const {
   PUSHER_KEY,
   PUSHER_SECRET,
   PUSHER_CLUSTER,
+  TWITCH_API_CLIENT_ID,
+  TWITCH_API_CLIENT_SECRET,
   TWITCH_WEBHOOK_SECRET,
   TWITCH_USER_ID,
-} = process.env;
+} = process.env
 
 const pusher = new Pusher({
   appId: PUSHER_APP_ID,
   key: PUSHER_KEY,
   secret: PUSHER_SECRET,
   cluster: PUSHER_CLUSTER,
-  useTLS: true
-});
+  useTLS: true,
+})
+
+const ALLOWED_ACTIONS =['subscribe', 'unsubscribe'];
+const ALLOWED_EVENT_SUB_TYPES = ['channel.follow'];
 
 /**
  *
@@ -47,39 +51,89 @@ function twitchVerification(expected, secret, body) {
  * @param {HandlerContext} context
  * @returns {Promise<HandlerResponse>}
  */
-exports.handler = async function (event, context) {
+exports.handler = async function(event, context) {
 
   const verified = twitchVerification(
       event.headers['Twitch-Eventsub-Message-Signature'],
       TWITCH_WEBHOOK_SECRET,
-      event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body
-  );
+      event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body,
+  )
+
+  if(event.httpMethod === 'GET'){
+
+    const {action, type} = event.queryStringParameters;
+
+    if(!ALLOWED_ACTIONS.includes(action)){
+      return {
+        statusCode: 400,
+        body:`action must be one of the following: ${ALLOWED_ACTIONS.join(', ')}`,
+      }
+    }
+
+    if(!ALLOWED_EVENT_SUB_TYPES.includes(type)){
+      return {
+        statusCode: 400,
+        body: `type must be one of the following: ${ALLOWED_EVENT_SUB_TYPES.join(', ')}`,
+      }
+    }
+
+    const authProvider = new ClientCredentialsAuthProvider(TWITCH_API_CLIENT_ID, TWITCH_API_CLIENT_SECRET);
+    const apiClient = new ApiClient({authProvider});
+
+    const currentSubs = await apiClient.helix.eventSub.getSubscriptionsForStatus('enabled');
+    const typeSub = currentSubs.data.find((sub)=>{
+      return sub.type === type
+    })
+
+    if(action === 'subscribe' && !typeSub){
+      switch (type){
+        case 'channel.follow':
+          const result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, TWITCH_WEBHOOK_SECRET);
+          return {
+            statusCode: 200,
+            body: JSON.stringify(result),
+          };
+      }
+    } else if(action === 'unsubscribe' && typeSub){
+      const result = await apiClient.helix.eventSub.deleteSubscription(typeSub.id);
+      return {
+        statusCode: 200,
+        body: JSON.stringify(result),
+      };
+    } else {
+      return {
+        statusCode: 400,
+        body: `That didn't work. Alex, please make a better error message.`,
+      }
+    }
+  }
+
   if (event.httpMethod === 'POST') {
-    if(!verified) return {statusCode:403,body:"Verification failed."};
+    if (!verified) return {statusCode: 403, body: "Verification failed."}
 
-    let body;
+    let body
 
-    try{
-      body = JSON.parse(event.body);
-    }catch(e){
-      return {statusCode:500, body:e};
+    try {
+      body = JSON.parse(event.body)
+    } catch (e) {
+      return {statusCode: 500, body: e}
     }
 
-    if(event.headers['Twitch-Eventsub-Message-Type'] === 'webhook_callback_verification'){
-      return {statusCode:200, body: body.challenge};
+    if (event.headers['Twitch-Eventsub-Message-Type'] === 'webhook_callback_verification') {
+      return {statusCode: 200, body: body.challenge}
     }
 
-    switch(event.headers['Twitch-Eventsub-Subscription-Type']){
+    switch (event.headers['Twitch-Eventsub-Subscription-Type']) {
       case 'channel.follow':
         // data transform goes here.
-        pusher.trigger(TWITCH_USER_ID, "channel.follow", body);
+        await pusher.trigger(TWITCH_USER_ID, "channel.follow", body)
         break;
     }
 
   }
 
   return {
-    statusCode:200,
-    body:"",
+    statusCode: 200,
+    body: "",
   }
 }
