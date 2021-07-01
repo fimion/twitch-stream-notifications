@@ -136,9 +136,9 @@ exports.handler = async function (event, context) {
   if (event.httpMethod === 'POST') {
 
     const verified = twitchVerification(
-        event.headers['Twitch-Eventsub-Message-Signature'],
+        event.headers['twitch-eventsub-message-signature'],
         TWITCH_WEBHOOK_SECRET,
-        event.headers['Twitch-Eventsub-Message-Id'] + event.headers['Twitch-Eventsub-Message-Timestamp'] + event.body,
+        event.headers['twitch-eventsub-message-id'] + event.headers['twitch-eventsub-message-timestamp'] + event.body,
     )
 
     if (!verified) return {statusCode: 403, body: "Verification failed."}
@@ -151,12 +151,12 @@ exports.handler = async function (event, context) {
       return {statusCode: 500, body: e}
     }
 
-    if (event.headers['Twitch-Eventsub-Message-Type'] === 'webhook_callback_verification') {
+    if (event.headers['twitch-eventsub-message-type'] === 'webhook_callback_verification') {
       debugLog('callback-verification', body);
       return {statusCode: 200, body: body.challenge}
     }
 
-    switch (event.headers['Twitch-Eventsub-Subscription-Type']) {
+    switch (event.headers['twitch-eventsub-subscription-type']) {
       case 'channel.follow':
         // data transform goes here.
         await pusher.trigger(TWITCH_USER_ID, "channel.follow", body)
