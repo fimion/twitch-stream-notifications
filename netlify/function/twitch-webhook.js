@@ -18,6 +18,7 @@ const {
   TWITCH_API_CLIENT_SECRET,
   TWITCH_WEBHOOK_SECRET,
   TWITCH_USER_ID,
+  DEBUG_CALLBACK,
 } = process.env
 
 const pusher = new Pusher({
@@ -27,6 +28,14 @@ const pusher = new Pusher({
   cluster: PUSHER_CLUSTER,
   useTLS: true,
 })
+
+
+function debugLog(...args){
+  console.log(args);
+  if(DEBUG_CALLBACK) {
+    return pusher.trigger(TWITCH_USER_ID, "debug", args);
+  }
+}
 
 const ALLOWED_ACTIONS = ['subscribe', 'unsubscribe']
 const ALLOWED_EVENT_SUB_TYPES = ['channel.follow']
@@ -79,6 +88,7 @@ exports.handler = async function (event, context) {
     let currentSubs
     try {
       currentSubs = await apiClient.helix.eventSub.getSubscriptionsForStatus('enabled')
+      debugLog('current-subs',currentSubs);
     } catch (e) {
       return {
         statusCode: 500,
@@ -141,6 +151,7 @@ exports.handler = async function (event, context) {
     }
 
     if (event.headers['Twitch-Eventsub-Message-Type'] === 'webhook_callback_verification') {
+      debugLog('callback-verification', body);
       return {statusCode: 200, body: body.challenge}
     }
 
