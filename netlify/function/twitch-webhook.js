@@ -62,7 +62,7 @@ function twitchVerification(expected, secret, body) {
  */
 exports.handler = async function (event, context) {
 
-
+  debugLog('event', event);
   if (event.httpMethod === 'GET') {
 
     const {action, type} = event.queryStringParameters
