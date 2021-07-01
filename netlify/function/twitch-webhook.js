@@ -109,6 +109,7 @@ exports.handler = async function (event, context) {
           try {
 
             result = await apiClient.helix.eventSub.subscribeToChannelFollowEvents(TWITCH_USER_ID, {secret:TWITCH_WEBHOOK_SECRET,method:'webhook',callback})
+            debugLog('subscribe-channel.follow', callback, result);
           } catch(e){
             return {
               statusCode: 500,
